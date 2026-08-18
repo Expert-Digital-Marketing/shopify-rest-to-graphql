@@ -1,0 +1,89 @@
+{
+  "$schema": "./schema.json",
+  "resource": "metafield",
+  "rules": [
+    {
+      "id": "metafield.create",
+      "rest": { "method": "POST", "path": "metafields.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/metafieldsSet",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "metafieldsSet",
+        "document": "mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {\n  metafieldsSet(metafields: $metafields) {\n    metafields {\n      id\n      namespace\n      key\n      value\n      type\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "metafields": [
+            {
+              "ownerId": "gid://shopify/Product/1234567890",
+              "namespace": "custom",
+              "key": "care_instructions",
+              "type": "single_line_text_field",
+              "value": "Machine wash cold"
+            }
+          ]
+        },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "There is no separate create and update. metafieldsSet does both, keyed on ownerId, namespace and key.",
+        "Maximum 25 metafields per call, and the whole call is atomic, so one bad entry persists none of them.",
+        "The owner is addressed by GID inside each entry rather than by a nested REST path such as products/{id}/metafields.json.",
+        "type is required and has no REST equivalent in older payloads. Guessing it wrong is the most common cause of a rejected write."
+      ]
+    },
+    {
+      "id": "metafield.update",
+      "rest": { "method": "PUT", "path": "metafields/{id}.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/metafieldsSet",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "metafieldsSet",
+        "document": "mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {\n  metafieldsSet(metafields: $metafields) {\n    metafields {\n      id\n      namespace\n      key\n      value\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "metafields": [
+            {
+              "ownerId": "gid://shopify/Product/1234567890",
+              "namespace": "custom",
+              "key": "care_instructions",
+              "type": "single_line_text_field",
+              "value": "Hand wash only"
+            }
+          ]
+        },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "The metafield ID from REST is not used. The entry is addressed by owner, namespace and key instead.",
+        "From API version 2024-07 a compareDigest field allows compare and set, which is the safe way to handle two writers racing on the same metafield.",
+        "Maximum 25 per call, and the call is atomic."
+      ]
+    },
+    {
+      "id": "metafield.owner_scoped_create",
+      "rest": { "method": "POST", "path": "products/{product_id}/metafields.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/metafieldsSet",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "metafieldsSet",
+        "document": "mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {\n  metafieldsSet(metafields: $metafields) {\n    metafields {\n      id\n      namespace\n      key\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "metafields": [
+            {
+              "ownerId": "gid://shopify/Product/1234567890",
+              "namespace": "custom",
+              "key": "care_instructions",
+              "type": "single_line_text_field",
+              "value": "Machine wash cold"
+            }
+          ]
+        },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "The owner moves out of the URL and into ownerId on each entry. The same mutation serves every owner type, so nested REST paths for customers, orders and variants all collapse into this one call."
+      ]
+    }
+  ]
+}

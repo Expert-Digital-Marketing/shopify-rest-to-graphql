@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expert-Digital-Marketing/shopify-rest-to-graphql/mappings/schema.json",
+  "title": "Shopify REST to GraphQL mapping file",
+  "type": "object",
+  "required": ["resource", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "resource": {
+      "type": "string",
+      "description": "The REST resource family these rules cover, for example 'product'."
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["id", "rest", "status", "docs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "description": "Stable identifier, referenced in reports and tests."
+        },
+        "rest": { "$ref": "#/$defs/rest" },
+        "graphql": { "$ref": "#/$defs/graphql" },
+        "status": {
+          "enum": ["direct", "partial", "manual"],
+          "description": "direct: the operation replaces the REST call one for one. partial: it replaces it but the shape or semantics differ. manual: no single operation replaces it and a human has to decide."
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Traps that cost time if missed. Each one must be traceable to the linked documentation."
+        },
+        "docs": {
+          "type": "string",
+          "format": "uri",
+          "description": "The reference page this rule was written from."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "manual" } }, "required": ["status"] },
+          "then": { "not": { "required": ["graphql"] } },
+          "else": { "required": ["graphql"] }
+        }
+      ]
+    },
+    "rest": {
+      "type": "object",
+      "required": ["method", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "enum": ["GET", "POST", "PUT", "DELETE"] },
+        "path": {
+          "type": "string",
+          "description": "Path relative to /admin/api/{version}/, with named segments in braces, for example 'products/{id}.json'."
+        }
+      }
+    },
+    "graphql": {
+      "type": "object",
+      "required": ["operation", "rootField", "document"],
+      "additionalProperties": false,
+      "properties": {
+        "operation": { "enum": ["query", "mutation"] },
+        "rootField": {
+          "type": "string",
+          "description": "The root field name, used to group and to check the document actually calls what the rule claims."
+        },
+        "document": {
+          "type": "string",
+          "description": "A complete, runnable operation. No ellipses, no placeholders beyond declared variables."
+        },
+        "variables": {
+          "type": "object",
+          "description": "Example variables for the document, with values that show the expected shape.",
+          "additionalProperties": true
+        },
+        "accessScopes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Scopes the operation requires, where the reference page states them."
+        }
+      }
+    }
+  }
+}

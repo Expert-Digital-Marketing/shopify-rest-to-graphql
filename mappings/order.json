@@ -1,0 +1,60 @@
+{
+  "$schema": "./schema.json",
+  "resource": "order",
+  "rules": [
+    {
+      "id": "order.list",
+      "rest": { "method": "GET", "path": "orders.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/queries/orders",
+      "graphql": {
+        "operation": "query",
+        "rootField": "orders",
+        "document": "query Orders($first: Int!, $after: String, $query: String) {\n  orders(first: $first, after: $after, query: $query) {\n    nodes {\n      id\n      name\n      createdAt\n      displayFinancialStatus\n      displayFulfillmentStatus\n      totalPriceSet {\n        shopMoney {\n          amount\n          currencyCode\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}",
+        "variables": { "first": 50, "after": null, "query": "financial_status:paid" },
+        "accessScopes": ["read_orders"]
+      },
+      "notes": [
+        "Only the last 60 days of orders are readable by default. Anything older needs the read_all_orders scope, which Shopify grants on request.",
+        "sortKey defaults to PROCESSED_AT here rather than ID, so results come back in a different order than a naive REST port expects.",
+        "REST status, financial_status and fulfillment_status parameters become terms inside the query string.",
+        "Money is a MoneyBag with shopMoney and presentmentMoney, not the single string REST returned."
+      ]
+    },
+    {
+      "id": "order.get",
+      "rest": { "method": "GET", "path": "orders/{id}.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/queries/order",
+      "graphql": {
+        "operation": "query",
+        "rootField": "order",
+        "document": "query Order($id: ID!) {\n  order(id: $id) {\n    id\n    name\n    email\n    createdAt\n    displayFinancialStatus\n    displayFulfillmentStatus\n    totalPriceSet {\n      shopMoney {\n        amount\n        currencyCode\n      }\n    }\n    lineItems(first: 50) {\n      nodes {\n        id\n        title\n        quantity\n      }\n    }\n  }\n}",
+        "variables": { "id": "gid://shopify/Order/1234567890" },
+        "accessScopes": ["read_orders"]
+      },
+      "notes": [
+        "The 60 day limit applies here too. An order older than that returns null unless the app holds read_all_orders.",
+        "Line items are a connection, so they need their own first argument and page beyond it. REST returned them inline.",
+        "order_number becomes name, which includes the store's order prefix."
+      ]
+    },
+    {
+      "id": "order.update",
+      "rest": { "method": "PUT", "path": "orders/{id}.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/orderUpdate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "orderUpdate",
+        "document": "mutation OrderUpdate($input: OrderInput!) {\n  orderUpdate(input: $input) {\n    order {\n      id\n      note\n      tags\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "input": { "id": "gid://shopify/Order/1234567890", "tags": ["priority"] } },
+        "accessScopes": ["write_orders"]
+      },
+      "notes": [
+        "This covers email, shipping address, tags, note and metafields only.",
+        "Changing line items, quantities or discounts is not possible here. That is an order edit, which begins with its own mutation and is a different flow from anything REST offered."
+      ]
+    }
+  ]
+}

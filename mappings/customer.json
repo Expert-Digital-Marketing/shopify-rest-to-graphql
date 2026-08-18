@@ -1,0 +1,90 @@
+{
+  "$schema": "./schema.json",
+  "resource": "customer",
+  "rules": [
+    {
+      "id": "customer.list",
+      "rest": { "method": "GET", "path": "customers.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/queries/customers",
+      "graphql": {
+        "operation": "query",
+        "rootField": "customers",
+        "document": "query Customers($first: Int!, $after: String, $query: String) {\n  customers(first: $first, after: $after, query: $query) {\n    nodes {\n      id\n      firstName\n      lastName\n      email\n      phone\n      numberOfOrders\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}",
+        "variables": { "first": 50, "after": null, "query": "email:*@example.com" },
+        "accessScopes": ["read_customers"]
+      },
+      "notes": [
+        "REST filters such as since_id become terms in the query string, which supports email, name, location and tags among others.",
+        "sortKey defaults to ID. Set it to match whatever the query filters on.",
+        "Customer data is protected. An app reading it has to meet Shopify's protected customer data requirements before this call is allowed in production."
+      ]
+    },
+    {
+      "id": "customer.get",
+      "rest": { "method": "GET", "path": "customers/{id}.json" },
+      "status": "direct",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/queries/customer",
+      "graphql": {
+        "operation": "query",
+        "rootField": "customer",
+        "document": "query Customer($id: ID!) {\n  customer(id: $id) {\n    id\n    firstName\n    lastName\n    email\n    phone\n    tags\n    note\n    amountSpent {\n      amount\n      currencyCode\n    }\n    numberOfOrders\n  }\n}",
+        "variables": { "id": "gid://shopify/Customer/6201722765389" },
+        "accessScopes": ["read_customers"]
+      },
+      "notes": [
+        "REST total_spent is a plain string. Here it is amountSpent, a money object with an amount and a currencyCode, so any code comparing the old string needs changing.",
+        "orders_count becomes numberOfOrders."
+      ]
+    },
+    {
+      "id": "customer.create",
+      "rest": { "method": "POST", "path": "customers.json" },
+      "status": "direct",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/customerCreate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "customerCreate",
+        "document": "mutation CustomerCreate($input: CustomerInput!) {\n  customerCreate(input: $input) {\n    customer {\n      id\n      email\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "input": { "email": "someone@example.com", "firstName": "Sam" } },
+        "accessScopes": ["write_customers"]
+      },
+      "notes": [
+        "Marketing consent cannot be set here. It has its own mutation, so a REST create that also opted the customer in becomes two calls."
+      ]
+    },
+    {
+      "id": "customer.update",
+      "rest": { "method": "PUT", "path": "customers/{id}.json" },
+      "status": "direct",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/customerUpdate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "customerUpdate",
+        "document": "mutation CustomerUpdate($input: CustomerInput!) {\n  customerUpdate(input: $input) {\n    customer {\n      id\n      email\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "input": { "id": "gid://shopify/Customer/6201722765389", "note": "VIP" } },
+        "accessScopes": ["write_customers"]
+      },
+      "notes": [
+        "The ID goes inside input, not as a separate argument.",
+        "Marketing consent is set by its own mutation, not here."
+      ]
+    },
+    {
+      "id": "customer.delete",
+      "rest": { "method": "DELETE", "path": "customers/{id}.json" },
+      "status": "direct",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/customerDelete",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "customerDelete",
+        "document": "mutation CustomerDelete($input: CustomerDeleteInput!) {\n  customerDelete(input: $input) {\n    deletedCustomerId\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "input": { "id": "gid://shopify/Customer/6201722765389" } },
+        "accessScopes": ["write_customers"]
+      },
+      "notes": [
+        "Only customers without orders can be deleted, so this fails where the REST call would have too, but the failure arrives in userErrors rather than as an HTTP status."
+      ]
+    }
+  ]
+}

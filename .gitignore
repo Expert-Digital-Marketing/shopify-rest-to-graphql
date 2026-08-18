@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+vendor/
+composer.lock
+package-lock.json
+.phpunit.cache/
+.DS_Store

@@ -1,0 +1,38 @@
+{
+  "$schema": "./schema.json",
+  "resource": "inventory",
+  "rules": [
+    {
+      "id": "inventory.set",
+      "rest": { "method": "POST", "path": "inventory_levels/set.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/inventorySetQuantities",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "inventorySetQuantities",
+        "document": "mutation InventorySetQuantities($input: InventorySetQuantitiesInput!) {\n  inventorySetQuantities(input: $input) {\n    inventoryAdjustmentGroup {\n      createdAt\n      reason\n      changes {\n        name\n        delta\n      }\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "input": {
+            "name": "available",
+            "reason": "correction",
+            "ignoreCompareQuantity": true,
+            "quantities": [
+              {
+                "inventoryItemId": "gid://shopify/InventoryItem/1234567890",
+                "locationId": "gid://shopify/Location/9876543210",
+                "quantity": 42
+              }
+            ]
+          }
+        },
+        "accessScopes": ["write_inventory"]
+      },
+      "notes": [
+        "REST set one location at a time. This takes an array, so a loop becomes one call.",
+        "A quantity name and a reason are both required. REST needed neither, so a straight port has to decide what the change was for.",
+        "Without ignoreCompareQuantity, the call expects the quantity you believe is current and fails if it has moved. That is a feature, not an obstacle, and it is the correct way to avoid two writers overwriting each other.",
+        "The response is an adjustment group describing what changed, not the new level. Code that read the returned level needs rewriting."
+      ]
+    }
+  ]
+}

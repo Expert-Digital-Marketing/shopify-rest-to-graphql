@@ -1,0 +1,139 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use EdmUk\ShopifyRestToGraphql\MappingRepository;
+use EdmUk\ShopifyRestToGraphql\Report;
+use EdmUk\ShopifyRestToGraphql\Scanner;
+
+$autoloads = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../vendor/autoload.php',
+    __DIR__ . '/../../../../../autoload.php',
+];
+
+foreach ($autoloads as $autoload) {
+    if (file_exists($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+const USAGE = <<<'TEXT'
+shopify-rest-to-graphql <path> [options]
+
+Finds Shopify REST Admin API calls and reports the GraphQL operation that
+replaces each one. Nothing is written to your source; the output is a report.
+
+Options
+  --format=<text|json|markdown>  Output format. Default text.
+  --mappings=<dir>               Mapping directory. Defaults to the bundled one.
+  --exclude=<name>               Directory name to skip. Repeatable.
+  --fail-on=<none|any|unmapped>  Exit non zero when calls are found. Default none.
+  --help                         This text.
+
+TEXT;
+
+/**
+ * @param  list<string>  $argv
+ */
+function run(array $argv): int
+{
+    $positional = [];
+    $format = 'text';
+    $mappings = null;
+    $exclude = [];
+    $failOn = 'none';
+
+    foreach ($argv as $argument) {
+        if ($argument === '--help' || $argument === '-h') {
+            fwrite(STDOUT, USAGE);
+
+            return 0;
+        }
+        if (str_starts_with($argument, '--format=')) {
+            $format = substr($argument, 9);
+        } elseif (str_starts_with($argument, '--mappings=')) {
+            $mappings = substr($argument, 11);
+        } elseif (str_starts_with($argument, '--exclude=')) {
+            $exclude[] = substr($argument, 10);
+        } elseif (str_starts_with($argument, '--fail-on=')) {
+            $failOn = substr($argument, 10);
+        } elseif (! str_starts_with($argument, '-')) {
+            $positional[] = $argument;
+        }
+    }
+
+    if ($positional === []) {
+        fwrite(STDERR, USAGE);
+
+        return 2;
+    }
+
+    $target = realpath($positional[0]);
+    if ($target === false) {
+        fwrite(STDERR, "No such path: {$positional[0]}\n");
+
+        return 2;
+    }
+
+    if ($mappings === null) {
+        foreach ([__DIR__ . '/../mappings', __DIR__ . '/../../../mappings'] as $candidate) {
+            if (is_dir($candidate)) {
+                $mappings = $candidate;
+                break;
+            }
+        }
+    }
+
+    if ($mappings === null || ! is_dir($mappings)) {
+        fwrite(STDERR, "Could not find the mappings directory. Pass --mappings.\n");
+
+        return 2;
+    }
+
+    $scanner = new Scanner(new MappingRepository($mappings));
+    $findings = $scanner->scanDirectory($target, $exclude);
+
+    $output = match ($format) {
+        'json' => Report::toJson($findings),
+        'markdown' => Report::toMarkdown($findings),
+        'text' => Report::toText($findings),
+        default => null,
+    };
+
+    if ($output === null) {
+        fwrite(STDERR, "Unknown format: {$format}\n");
+
+        return 2;
+    }
+
+    fwrite(STDOUT, $output . "\n");
+
+    $unparseable = $scanner->unparseableFiles();
+    if ($unparseable !== []) {
+        fwrite(STDERR, sprintf(
+            "%d file(s) could not be parsed and were skipped: %s\n",
+            count($unparseable),
+            implode(', ', array_slice($unparseable, 0, 5)) . (count($unparseable) > 5 ? ' and more' : ''),
+        ));
+    }
+
+    $summary = Report::summarise($findings);
+    if ($failOn === 'any' && $summary['total'] > 0) {
+        return 1;
+    }
+    if ($failOn === 'unmapped' && $summary['unmapped'] > 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
+try {
+    exit(run(array_slice($argv, 1)));
+} catch (Throwable $error) {
+    fwrite(STDERR, $error->getMessage() . "\n");
+    exit(2);
+}

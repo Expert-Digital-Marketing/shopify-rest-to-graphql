@@ -1,0 +1,50 @@
+{
+  "name": "@edm-uk/shopify-rest-to-graphql",
+  "version": "0.1.0",
+  "description": "Find Shopify REST Admin API calls in a TypeScript or JavaScript codebase and report the GraphQL operation that replaces each one.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "bin": {
+    "shopify-rest-to-graphql": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "mappings"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "test": "npm run build && node --test test/*.test.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "typescript": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Expert-Digital-Marketing/shopify-rest-to-graphql.git",
+    "directory": "packages/ts"
+  },
+  "keywords": [
+    "shopify",
+    "graphql",
+    "rest",
+    "migration",
+    "admin-api",
+    "codemod"
+  ]
+}

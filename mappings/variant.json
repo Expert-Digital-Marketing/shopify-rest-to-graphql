@@ -1,0 +1,70 @@
+{
+  "$schema": "./schema.json",
+  "resource": "variant",
+  "rules": [
+    {
+      "id": "variant.create",
+      "rest": { "method": "POST", "path": "products/{product_id}/variants.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/productVariantsBulkCreate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "productVariantsBulkCreate",
+        "document": "mutation ProductVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $strategy: ProductVariantsBulkCreateStrategy) {\n  productVariantsBulkCreate(productId: $productId, variants: $variants, strategy: $strategy) {\n    productVariants {\n      id\n      title\n      sku\n      price\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "productId": "gid://shopify/Product/1234567890",
+          "variants": [{ "optionValues": [{ "optionName": "Size", "name": "Large" }], "price": "19.99" }],
+          "strategy": null
+        },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "There is no single variant create. The mutation takes an array, so a loop over REST calls becomes one call with many variants.",
+        "The strategy argument decides what happens to the product's standalone default variant. Leaving it unset keeps the default behaviour.",
+        "The product ID is required as a separate argument, not carried inside each variant."
+      ]
+    },
+    {
+      "id": "variant.update",
+      "rest": { "method": "PUT", "path": "variants/{id}.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/productVariantsBulkUpdate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "productVariantsBulkUpdate",
+        "document": "mutation ProductVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $allowPartialUpdates: Boolean) {\n  productVariantsBulkUpdate(productId: $productId, variants: $variants, allowPartialUpdates: $allowPartialUpdates) {\n    productVariants {\n      id\n      sku\n      price\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "productId": "gid://shopify/Product/1234567890",
+          "variants": [{ "id": "gid://shopify/ProductVariant/9876543210", "price": "24.99" }],
+          "allowPartialUpdates": false
+        },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "The REST call needed only the variant ID. This one also needs the parent product ID, which the REST caller may never have held.",
+        "allowPartialUpdates defaults to false, so one invalid variant in the array fails every variant in the call. REST failed one at a time.",
+        "Inventory quantity is not set here. Quantities move through the inventory operations."
+      ]
+    },
+    {
+      "id": "variant.delete",
+      "rest": { "method": "DELETE", "path": "products/{product_id}/variants/{id}.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/productVariantsBulkDelete",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "productVariantsBulkDelete",
+        "document": "mutation ProductVariantsBulkDelete($productId: ID!, $variantsIds: [ID!]!) {\n  productVariantsBulkDelete(productId: $productId, variantsIds: $variantsIds) {\n    product {\n      id\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": {
+          "productId": "gid://shopify/Product/1234567890",
+          "variantsIds": ["gid://shopify/ProductVariant/9876543210"]
+        },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "The argument is spelled variantsIds, not variantIds. It is an easy typo and the error it produces does not point at the spelling.",
+        "Deleting several variants is one call rather than several."
+      ]
+    }
+  ]
+}

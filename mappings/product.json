@@ -1,0 +1,97 @@
+{
+  "$schema": "./schema.json",
+  "resource": "product",
+  "rules": [
+    {
+      "id": "product.list",
+      "rest": { "method": "GET", "path": "products.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/queries/products",
+      "graphql": {
+        "operation": "query",
+        "rootField": "products",
+        "document": "query Products($first: Int!, $after: String, $query: String) {\n  products(first: $first, after: $after, query: $query) {\n    nodes {\n      id\n      title\n      handle\n      status\n      vendor\n      productType\n      createdAt\n      updatedAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}",
+        "variables": { "first": 50, "after": null, "query": "status:active" },
+        "accessScopes": ["read_products"]
+      },
+      "notes": [
+        "The REST limit parameter becomes first, and page_info becomes the after cursor taken from pageInfo.endCursor.",
+        "A single request returns at most 250 nodes. Above that, page or use a bulk operation.",
+        "REST filter parameters are not arguments one for one. Most become terms in the query search string, which accepts fields such as product_type, vendor, status, created_at, title and barcode.",
+        "sortKey defaults to ID and should match the field you filter on, or the query gets slower as the catalogue grows.",
+        "Fields are not returned unless you ask for them. A REST caller that read an undocumented field gets nothing back until that field is named."
+      ]
+    },
+    {
+      "id": "product.get",
+      "rest": { "method": "GET", "path": "products/{id}.json" },
+      "status": "direct",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/queries/product",
+      "graphql": {
+        "operation": "query",
+        "rootField": "product",
+        "document": "query Product($id: ID!) {\n  product(id: $id) {\n    id\n    title\n    handle\n    descriptionHtml\n    status\n    vendor\n    productType\n    tags\n  }\n}",
+        "variables": { "id": "gid://shopify/Product/1234567890" },
+        "accessScopes": ["read_products"]
+      },
+      "notes": [
+        "The numeric REST id becomes a GID. Take it from the admin_graphql_api_id property on the REST payload rather than building the string yourself.",
+        "The return type is nullable, so a product that does not exist comes back as null inside a 200 response, not as a 404."
+      ]
+    },
+    {
+      "id": "product.create",
+      "rest": { "method": "POST", "path": "products.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "productCreate",
+        "document": "mutation ProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!]) {\n  productCreate(product: $product, media: $media) {\n    product {\n      id\n      title\n      handle\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "product": { "title": "My new product" }, "media": null },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "The argument is product of type ProductCreateInput. The input argument of type ProductInput is deprecated, and Shopify's own migration examples still show the deprecated form.",
+        "Variants cannot be created here. Create the product, then call productVariantsBulkCreate.",
+        "Products are created unpublished. Publishing is a separate publishablePublish call.",
+        "Above 50,000 variants in a store, no more than 1,000 new variants can be created per day."
+      ]
+    },
+    {
+      "id": "product.update",
+      "rest": { "method": "PUT", "path": "products/{id}.json" },
+      "status": "partial",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/productUpdate",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "productUpdate",
+        "document": "mutation ProductUpdate($product: ProductUpdateInput!) {\n  productUpdate(product: $product) {\n    product {\n      id\n      title\n      handle\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "product": { "id": "gid://shopify/Product/1234567890", "title": "Updated title" } },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "The argument is product of type ProductUpdateInput. The input argument of type ProductInput is deprecated.",
+        "Variants cannot be updated here. Use productVariantsBulkUpdate for prices and variant detail.",
+        "A REST product update that also removed images has no equivalent here. Media deletion is its own call."
+      ]
+    },
+    {
+      "id": "product.delete",
+      "rest": { "method": "DELETE", "path": "products/{id}.json" },
+      "status": "direct",
+      "docs": "https://shopify.dev/docs/api/admin-graphql/latest/mutations/productDelete",
+      "graphql": {
+        "operation": "mutation",
+        "rootField": "productDelete",
+        "document": "mutation ProductDelete($input: ProductDeleteInput!, $synchronous: Boolean) {\n  productDelete(input: $input, synchronous: $synchronous) {\n    deletedProductId\n    userErrors {\n      field\n      message\n    }\n  }\n}",
+        "variables": { "input": { "id": "gid://shopify/Product/1234567890" }, "synchronous": true },
+        "accessScopes": ["write_products"]
+      },
+      "notes": [
+        "Deletion is permanent and takes variants, media, publications and inventory items with it.",
+        "For a product with many variants across several locations, pass synchronous false and follow the returned ProductDeleteOperation, or the call can time out."
+      ]
+    }
+  ]
+}
